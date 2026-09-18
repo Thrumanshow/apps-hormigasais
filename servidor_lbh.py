@@ -6,14 +6,42 @@ Tipos: 0x01 = Telemetría | 0x02 = Feromona Heartbeat
 """
 
 import asyncio
+import os
 import struct
 import time
 from websockets.asyncio.server import serve
 from websockets.exceptions import ConnectionClosed
 
+LBH_NODE_TOKEN = int(os.environ.get("LBH_NODE_TOKEN", "0") or "0", 16)
+AUTH_TIMEOUT = 5  # segundos para recibir el frame de autenticación
+
 async def handler(websocket):
     peer = websocket.remote_address
     print(f"📡 [Nodo Edge] Cliente conectado → {peer}", flush=True)
+
+    if LBH_NODE_TOKEN:
+        try:
+            first = await asyncio.wait_for(websocket.recv(), timeout=AUTH_TIMEOUT)
+        except (asyncio.TimeoutError, ConnectionClosed):
+            print(f"🚫 [Auth] Sin frame de autenticación a tiempo → {peer}", flush=True)
+            await websocket.close(code=4001, reason="auth timeout")
+            return
+
+        valid = False
+        if isinstance(first, (bytes, bytearray)) and len(first) == 16:
+            try:
+                magic, tipo, flags, sensor_id, token, ts = struct.unpack(">2sBBIII", first)
+                if magic == b"LA" and tipo == 0x03 and token == LBH_NODE_TOKEN:
+                    valid = True
+            except Exception:
+                pass
+
+        if not valid:
+            print(f"🚫 [Auth] Token inválido → {peer}", flush=True)
+            await websocket.close(code=4001, reason="unauthorized")
+            return
+
+        print(f"🔑 [Auth] Cliente autenticado → {peer}", flush=True)
 
     try:
         async for message in websocket:

@@ -15,16 +15,33 @@ class LBHHeartbeatAnt {
     this.onStateChange = options.onStateChange || null;
     this.onMessage = options.onMessage || null;
     this._intentionalClose = false;
+    this._closingRetry = null;
+    this.authToken = options.authToken || null;
   }
 
   init() {
     this.connect();
     this.setupUserActivityListeners();
+    this.setupVisibilityListener();
   }
 
   connect() {
-    if (this.ws && (this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)) {
-      return;
+    if (this.ws) {
+      const state = this.ws.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) {
+        return;
+      }
+      if (state === WebSocket.CLOSING) {
+        // Evita abrir un socket nuevo mientras el anterior sigue cerrando —
+        // reintenta en 250ms en vez de crear dos sockets simultáneos.
+        if (!this._closingRetry) {
+          this._closingRetry = setTimeout(() => {
+            this._closingRetry = null;
+            this.connect();
+          }, 250);
+        }
+        return;
+      }
     }
 
     this._intentionalClose = false;
@@ -32,6 +49,7 @@ class LBHHeartbeatAnt {
     this.ws.binaryType = "arraybuffer";
 
     this.ws.onopen = () => {
+      this.sendAuthFrame();
       this._setState("CONNECTED", "🟢 Conectado al Nodo Edge");
       this.startHeartbeatLoop();
     };
@@ -87,6 +105,22 @@ class LBHHeartbeatAnt {
     }
   }
 
+  sendAuthFrame() {
+    if (!this.authToken || !this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+
+    const buffer = new ArrayBuffer(16);
+    const view = new DataView(buffer);
+    view.setUint8(0, 0x4C); // L
+    view.setUint8(1, 0x41); // A
+    view.setUint8(2, 0x03); // Tipo: Auth
+    view.setUint8(3, 0x00);
+    view.setUint32(4, 0);
+    view.setUint32(8, this.authToken);
+    view.setUint32(12, Math.floor(Date.now() / 1000));
+
+    this.ws.send(buffer);
+  }
+
   emitHeartbeatPheromone() {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
 
@@ -113,6 +147,22 @@ class LBHHeartbeatAnt {
 
     ["click", "touchstart", "mousemove", "keydown"].forEach(evt => {
       window.addEventListener(evt, awaken, { passive: true });
+    });
+  }
+
+  setupVisibilityListener() {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) return;
+
+      // Al volver a primer plano: connect() ya es seguro llamarlo repetidamente —
+      // si el socket sigue OPEN/CONNECTING no hace nada; si Android lo mató en
+      // segundo plano sin disparar onclose a tiempo, esto lo detecta y reconecta
+      // de inmediato en vez de esperar al scheduleReconnect() de 3s.
+      const isDead = !this.ws || this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING;
+      if (isDead) {
+        this._setState("OFFLINE", "🟡 Verificando canal tras reanudar...");
+      }
+      this.connect();
     });
   }
 
@@ -147,6 +197,7 @@ class LBHHeartbeatAnt {
     this._intentionalClose = true;
     this.stopHeartbeatLoop();
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    if (this._closingRetry) clearTimeout(this._closingRetry);
     if (this.ws) this.ws.close();
   }
 }
