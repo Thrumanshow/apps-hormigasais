@@ -3,3 +3,4 @@ auth-config.js
 *.bak
 .hormigas_secrets
 _tmp/
+_tmp/
