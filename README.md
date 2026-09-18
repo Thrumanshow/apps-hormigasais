@@ -170,9 +170,9 @@ apps-hormigasais/
 
 ### Phase 2 – Usability
 
-- [ ] Event delegation
-- [ ] Multiple sensors and controls
-- [ ] Persistent local state
+- [x] Event delegation
+- [x] Multiple sensors and controls
+- [x] Persistent local state
 - [ ] Improved PWA packaging
 
 ### Phase 3 – Agents & Services
