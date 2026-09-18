@@ -4,6 +4,15 @@
 DIR="$HOME/apps-hormigasais_clone/apps-hormigasais"
 cd "$DIR" || { echo "❌ No se encontró el directorio $DIR"; exit 1; }
 
+SECRETS_FILE="$HOME/.hormigas_secrets"
+if [[ -f "$SECRETS_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$SECRETS_FILE"
+else
+  echo "❌ No existe $SECRETS_FILE; ejecuta configure_lbh_token.sh primero"
+  exit 1
+fi
+
 echo "🐜 HormigasAIS · Nodo A16 · San Miguel"
 echo "----------------------------------------"
 

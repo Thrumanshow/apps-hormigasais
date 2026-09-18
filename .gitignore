@@ -1,1 +1,4 @@
 *.log
+auth-config.js
+*.bak
+.hormigas_secrets

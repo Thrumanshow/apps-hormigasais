@@ -16,6 +16,7 @@
   </style>
   
   <!-- Módulo Independiente de la Hormiga Centinela LBH -->
+  <script src="auth-config.js"></script>
   <script src="assets/js/lbh-heartbeat-ant.js"></script>
 </head>
 <body>
@@ -38,8 +39,8 @@
 
     // Instanciar la Hormiga Centinela LBH
     const ant = new LBHHeartbeatAnt({
-      authToken: 0x1523134668,
-      inactivityThresholdMs: 30000,
+      authToken: window.HORMIGASAIS_AUTH_TOKEN,
+      inactivityLimitMs: 30000,
       onStateChange: (state, msg) => {
         if (logDiv) logDiv.innerText = msg;
         console.log(`[Ant] ${state}: ${msg}`);
