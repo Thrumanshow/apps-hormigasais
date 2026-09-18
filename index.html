@@ -13,6 +13,9 @@
     button { background: #00ff66; color: #000; border: none; padding: 10px 15px; font-weight: bold; cursor: pointer; border-radius: 4px; margin-top: 5px; }
     .status { margin-top: 10px; font-size: 0.9em; word-break: break-word; }
     input { padding: 5px; background: #111; color: #00ff66; border: 1px solid #00ff66; border-radius: 4px; }
+  #sensor-grid { display: flex; flex-direction: column; gap: 12px; margin: 15px 0; }
+  .sensor-card { border: 1px dashed #00ff6688; border-radius: 6px; padding: 10px; }
+  .sensor-status { margin-top: 6px; font-size: 0.82em; color: #7fffb2; }
   </style>
   
   <!-- Módulo Independiente de la Hormiga Centinela LBH -->
@@ -25,9 +28,28 @@
     <h2>🐜 HormigasAIS Edge App</h2>
     <p>Infraestructura Soberana LBH</p>
 
-    <label>Sensor Telemetría (ID: 1001):</label><br>
-    <input type="number" id="sensorVal" value="600"><br>
-    <button id="btnSend">Enviar Trama LBH</button>
+    <div id="sensor-grid">
+      <div class="sensor-card" data-sensor-id="1001">
+        <label>Sensor Telemetría (ID: 1001):</label><br>
+        <input type="number" class="sensor-input" value="600"><br>
+        <button class="btn-sensor-send" data-sensor-id="1001">Enviar Trama LBH</button>
+        <div class="sensor-status" data-sensor-status="1001">Sin datos aún</div>
+      </div>
+
+      <div class="sensor-card" data-sensor-id="1002">
+        <label>Sensor Humedad (ID: 1002):</label><br>
+        <input type="number" class="sensor-input" value="45"><br>
+        <button class="btn-sensor-send" data-sensor-id="1002">Enviar Trama LBH</button>
+        <div class="sensor-status" data-sensor-status="1002">Sin datos aún</div>
+      </div>
+
+      <div class="sensor-card" data-sensor-id="1003">
+        <label>Sensor Presión (ID: 1003):</label><br>
+        <input type="number" class="sensor-input" value="1013"><br>
+        <button class="btn-sensor-send" data-sensor-id="1003">Enviar Trama LBH</button>
+        <div class="sensor-status" data-sensor-status="1003">Sin datos aún</div>
+      </div>
+    </div>
 
     <div class="status" id="log">Estado: Inicializando Hormiga Centinela...</div>
     <br>
@@ -36,8 +58,45 @@
 
   <script>
     const logDiv = document.getElementById("log");
+    const STORAGE_KEY = "hormigasais_sensor_state";
 
-    // Instanciar la Hormiga Centinela LBH
+    // ---------- Persistencia local (localStorage) ----------
+    function loadSensorState() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveSensorReading(sensorId, val, estado) {
+      const state = loadSensorState();
+      state[sensorId] = { val, estado, ts: Date.now() };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.warn("[Storage] No se pudo guardar el estado del sensor", e);
+      }
+      renderSensorStatus(sensorId, val, estado, false);
+    }
+
+    function renderSensorStatus(sensorId, val, estado, isCached) {
+      const el = document.querySelector(`[data-sensor-status="${sensorId}"]`);
+      if (!el) return;
+      const prefix = isCached ? "💾 Última lectura guardada" : "📩 Respuesta LBH";
+      el.innerText = `${prefix} | ${estado} | Val: ${val}`;
+    }
+
+    // Mostrar el último dato conocido de cada sensor antes de conectar
+    (function hydrateFromStorage() {
+      const state = loadSensorState();
+      Object.keys(state).forEach((sensorId) => {
+        const { val, estado } = state[sensorId];
+        renderSensorStatus(sensorId, val, estado, true);
+      });
+    })();
+
+    // ---------- Cliente LBH (Hormiga Centinela) ----------
     const ant = new LBHHeartbeatAnt({
       authToken: window.HORMIGASAIS_AUTH_TOKEN,
       inactivityLimitMs: 30000,
@@ -49,22 +108,30 @@
         // Procesar respuesta binaria 0x01 del servidor LBH
         const view = new DataView(event.data);
         const flags = view.getUint8(3);
+        const sensorId = view.getUint32(4);
         const payload = view.getUint32(8);
         const estado = flags === 1 ? "⚠️ ALERTA" : "✅ NORMAL";
+
         if (logDiv) logDiv.innerText = `📩 Respuesta LBH | ${estado} | Val: ${payload}`;
+        saveSensorReading(sensorId, payload, estado);
       }
     });
 
     // Iniciar la hormiga centinela
     ant.init();
 
-    // Función global y binding para el botón de envío
-    function sendLBHFrame() {
-      const val = parseInt(document.getElementById("sensorVal").value) || 0;
-      ant.sendLBHFrame(1001, val);
-    }
+    // ---------- Delegación de eventos: un solo listener para todos los sensores ----------
+    document.getElementById("sensor-grid").addEventListener("click", (e) => {
+      const btn = e.target.closest(".btn-sensor-send");
+      if (!btn) return;
 
-    document.getElementById("btnSend").addEventListener("click", sendLBHFrame);
+      const sensorId = parseInt(btn.dataset.sensorId, 10);
+      const card = btn.closest(".sensor-card");
+      const input = card ? card.querySelector(".sensor-input") : null;
+      const val = input ? (parseInt(input.value, 10) || 0) : 0;
+
+      ant.sendLBHFrame(sensorId, val);
+    });
 
     // Instalador PWA
     let deferredPrompt;
