@@ -2,145 +2,223 @@
 
 **Sovereign Edge Computing from Android/Termux**
 
-[![Status](https://img.shields.io/badge/Status-Phase%201%20(Active)-blue)]()
-[![Protocol](https://img.shields.io/badge/Protocol-LBH%20v0.1-green)]()
-[![Platform](https://img.shields.io/badge/Platform-Android%20%2B%20Termux-orange)]()
-[![License](https://img.shields.io/badge/License-MIT-yellow)]()
+[![Status](https://img.shields.io/badge/Status-Phase%201%20(Active)-blue)](https://github.com/Thrumanshow/apps-hormigasais)
+[![Protocol](https://img.shields.io/badge/Protocol-LBH%20v0.1-green)](https://github.com/Thrumanshow/apps-hormigasais)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%2B%20Termux-orange)](https://termux.dev/)
+[![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
-> Lightweight, authenticated edge infrastructure designed to run on constrained devices.  
-> Built entirely from a phone in San Miguel, El Salvador.
+> Lightweight, authenticated edge infrastructure designed to run on constrained devices.
+> Built from Android/Termux in San Miguel, El Salvador.
 
 ---
 
 ## Vision
 
-HormigasAIS is an experimental sovereign edge computing ecosystem.  
-The goal is to enable small, autonomous agents and services that can operate without heavy cloud dependency — suitable for educational environments, laboratories, and small/medium businesses (Pymes).
+HormigasAIS is an experimental sovereign edge-computing ecosystem.
 
-This repository contains the **Phase 1** implementation: a working Edge Node + binary protocol (LBH) + resilient PWA client.
+The goal is to enable small autonomous agents and services that can operate locally, reducing dependence on heavy cloud infrastructure while remaining suitable for educational environments, laboratories, and small and medium-sized businesses.
+
+This repository contains the **Phase 1** implementation:
+
+- Edge Node
+- LBH binary protocol
+- Resilient PWA client
+- Authenticated WebSocket communication
+- Heartbeat and telemetry mechanisms
 
 ---
 
 ## Current Status – Phase 1
 
-**What is working today:**
+### Working
 
 - Binary protocol **LBH** (Lenguaje Binario HormigasAIS)
-- Edge Node written in Python (`servidor_lbh.py`)
-- WebSocket server on port `8765`
+- Python Edge Node (`servidor_lbh.py`)
+- WebSocket server
 - Client authentication
-- Heartbeat system (“Feromona” 0x02)
-- Telemetry frames (0x01)
-- Resilient Android/PWA client with automatic reconnection
-- Visibility change recovery (handles Android background killing)
-- Basic autonomous reaction on the node side
+- Heartbeat / Feromona frame (`0x02`)
+- Telemetry frame (`0x01`)
+- Resilient Android/PWA client
+- Automatic WebSocket reconnection
+- Visibility-change recovery for mobile browsers
+- Basic autonomous reactions on the node side
 
-**What is intentionally not finished yet:**
+### Not finished
+
 - Multi-sensor event delegation
-- Persistent local state (`localStorage`)
+- Persistent client-side state
 - Formal multi-agent decision layer
-- Packaging & distribution
+- Packaging and distribution
 
-This is an active Phase 1. The foundation is stable enough to build upon.
+> Phase 1 is an active development stage. Protocol details should be considered experimental unless confirmed by the implementation and corresponding tests.
 
 ---
 
 ## Architecture Overview
 
+```text
+┌───────────────────────────────────────┐
+│             PWA Client                │
+│          Android Browser              │
+└───────────────────┬───────────────────┘
+                    │
+                    │ Authenticated WebSocket
+                    │ LBH frames
+                    ▼
+┌───────────────────────────────────────┐
+│              Edge Node                │
+│            servidor_lbh.py             │
+│                                       │
+│  ├── Heartbeat / Feromona             │
+│  ├── Telemetry                        │
+│  └── Autonomous reactions             │
+└───────────────────────────────────────┘
+                    │
+                    ▼
+             Local network /
+                localhost
+```
 
-[ PWA Client (Android Browser) ]
-│
-│  WebSocket (authenticated)
-│  Binary LBH frames
-▼
-[ Edge Node – servidor_lbh.py ]
-│
-├── Heartbeat / Feromona (0x02)
-├── Telemetry (0x01)
-└── Simple autonomous reactions
-
-Everything currently runs on the same device (localhost) or local network.
+The current implementation is designed to operate on the same device or within a local network.
 
 ---
 
-## LBH Protocol (Phase 1)
+## LBH Protocol – Phase 1
 
-- **Magic bytes**: `LA` (0x4C 0x41)
-- **Frame size**: 16 bytes
-- **Type 0x01**: Telemetry (Sensor ID + Value + Timestamp)
-- **Type 0x02**: Heartbeat / Feromona (keep-alive + standby signal)
+The Phase 1 implementation currently documents these protocol concepts:
 
-The client sends periodic pheromone frames.  
-The node replies with ACK and can trigger simple alerts.
+| Field | Value |
+|---|---|
+| Magic bytes | `LA` (`0x4C 0x41`) |
+| Type `0x01` | Telemetry |
+| Type `0x02` | Heartbeat / Feromona |
+
+The exact binary frame layout and frame length should be treated as implementation-defined until verified against the encoder, decoder, server, client, and automated tests.
+
+This README intentionally avoids presenting an experimental frame description as a finalized specification.
 
 ---
 
-## Quick Start (Termux)
+## Quick Start – Termux
 
 ### 1. Requirements
 
+Install the basic environment:
+
 ```bash
-pkg update && pkg upgrade
+pkg update
 pkg install python nodejs git
 pip install websockets
+```
 
-2. Clone & Run the Edge Node
-git clone [https://github.com/Thrumanshow/apps-hormigasais.git](https://github.com/Thrumanshow/apps-hormigasais.git)
+If the project later defines a pinned dependency file, prefer that file over manually installing packages.
+
+### 2. Clone the repository
+
+```bash
+git clone https://github.com/Thrumanshow/apps-hormigasais.git
 cd apps-hormigasais
+```
 
-# Load secrets (create ~/.hormigas_secrets first)
-source ~/.hormigas_secrets
+### 3. Start the Edge Node
 
+```bash
 python servidor_lbh.py
+```
 
-You should see:
-🚀 Servidor Soberano LBH ejecutándose en ws://0.0.0.0:8765
-   Magic: LA | Tipos: 0x01 (telemetría) · 0x02 (heartbeat)
+The exact startup message depends on the current implementation. The server is expected to listen on port `8765` when configured that way.
 
-3. Open the PWA
-Serve the frontend (or open the HTML directly) and connect to:
+### 4. Connect the PWA
+
+The client can connect locally to:
+
+```text
 ws://localhost:8765
+```
 
-Project Structure (Phase 1)
+When connecting from another device on the local network, use the Edge Node's local network address instead of `localhost`.
+
+---
+
+## Project Structure
+
+```text
 apps-hormigasais/
-├── servidor_lbh.py              # Edge Node (Python)
-├── assets/js/lbh-heartbeat-ant.js  # Resilient WebSocket client
-├── index.html                   # Basic PWA interface
-├── _tmp/                        # Temporary files / backups
-└── README.md
+├── servidor_lbh.py
+├── index.html
+├── assets/
+│   └── js/
+│       └── lbh-heartbeat-ant.js
+├── README.md
+└── _tmp/
+```
 
-Roadmap (Living Document)
-Phase 1 – Foundation (Current)
- * [x] Binary LBH protocol
- * [x] Authenticated WebSocket
- * [x] Heartbeat + Telemetry
- * [x] Android background resilience
- * [x] Basic autonomous reaction
-Phase 2 – Usability
- * [ ] Event delegation (multiple sensors/controls)
- * [ ] localStorage persistence
- * [ ] Better PWA packaging
-Phase 3 – Agents & Services
- * [ ] Injectable agents for universities & Pymes
- * [ ] Formal decision layer
- * [ ] Documentation & examples
-This roadmap will evolve. Nothing is set in stone.
-Design Principles
- * Sovereignty first – Prefer running on the device you control.
- * Constrained by design – Must work well on Android + Termux.
- * Honest status – Clearly separate what works from what is experimental.
- * Incremental – Each phase must be usable before moving to the next.
-Contributing
-This is currently a single-maintainer project (Node A16).
-Feedback, issues, and technical discussions are welcome.
-For now, please open an Issue before submitting large changes.
-Author
-Cristhiam Leonardo Hernández Quiñonez (CLHQ)
+`_tmp/` is intended for temporary local files and should not be part of a published release artifact. Consider adding it to `.gitignore`.
+
+---
+
+## Roadmap
+
+### Phase 1 – Foundation
+
+- [x] Binary LBH protocol
+- [x] Authenticated WebSocket
+- [x] Heartbeat
+- [x] Telemetry
+- [x] Android background resilience
+- [x] Basic autonomous reaction
+
+### Phase 2 – Usability
+
+- [ ] Event delegation
+- [ ] Multiple sensors and controls
+- [ ] Persistent local state
+- [ ] Improved PWA packaging
+
+### Phase 3 – Agents & Services
+
+- [ ] Injectable agents for educational institutions
+- [ ] University and SME/Pyme integrations
+- [ ] Formal decision layer
+- [ ] Documentation and examples
+
+> This roadmap is a living document and may evolve as the implementation develops.
+
+---
+
+## Design Principles
+
+1. **Sovereignty first** – Prefer infrastructure that can run on devices under the operator's control.
+2. **Constrained by design** – The system should remain practical on Android and Termux.
+3. **Honest status** – Clearly distinguish working features from experimental features.
+4. **Incremental development** – Each phase should provide a usable foundation for the next.
+5. **Auditable infrastructure** – Protocol and runtime behavior should be verifiable from source code and tests.
+
+---
+
+## Contributing
+
+This is currently a single-maintainer project. Technical feedback, issues, and discussions are welcome.
+
+For substantial changes, please open an Issue before submitting a large pull request.
+
+---
+
+## Author
+
+**Cristhiam Leonardo Hernández Quiñonez (CLHQ)**
 Founder – HormigasAIS
 San Miguel, El Salvador
- * GitHub: Thrumanshow
- * Project site: hormigasais.com
-License
-MIT License – see LICENSE file.
-Phase 1 – Built and tested from Termux on Android.
-Nodo A16 · San Miguel, El Salvador
+GitHub: [Thrumanshow](https://github.com/Thrumanshow)
+Project: [hormigasais.com](https://hormigasais.com)
+
+---
+
+## License
+
+MIT License – see [LICENSE](LICENSE).
+
+---
+
+*Phase 1 – Built and tested from Termux on Android.*
+*Nodo A16 · San Miguel, El Salvador*
