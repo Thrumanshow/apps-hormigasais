@@ -112,5 +112,4 @@ San Miguel, El Salvador
 MIT License – see `LICENSE` file.
 
 ---
-
 *Phase 3 Validated – Nodo A16 · San Miguel, El Salvador*
