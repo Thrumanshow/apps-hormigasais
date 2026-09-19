@@ -49,14 +49,14 @@ Fixed **16-byte binary frame** optimized for low bandwidth and edge processing:
 - **Target FCP/TTFB**: <320ms on local / Edge network
 - **Socket Resilience**: Connection preservation via 0x02 heartbeats + automatic reconnection
 
-### Quick Start — Termux
+### Quick Start – Termux
 
+```bash
 cd ~/apps-hormigasais_clone/apps-hormigasais
-
 pkill -f servidor_lbh.py 2>/dev/null || true
-
 source ~/.hormigas_secrets
 ./start_nodo.sh
+```
 
 - **Dashboard PWA**: http://localhost:8080
 - **WebSocket LBH**: ws://localhost:8765
@@ -65,6 +65,7 @@ source ~/.hormigas_secrets
 
 ## Architecture
 
+```text
 PWA Client (Multi-Sensor Grid)
   |
   | Authenticated WebSocket + LBH 16-Byte Frame
@@ -73,6 +74,7 @@ Edge Node (servidor_lbh.py)
   +-- Heartbeat / Feromona (0x02)
   +-- Telemetry Multi-Sensor (0x01)
   +-- Autonomous Agent (Alerts)
+```
 
 ---
 
@@ -111,4 +113,4 @@ MIT License – see `LICENSE` file.
 
 ---
 
-*Phase 3 Validated — Nodo A16 · San Miguel, El Salvador*
+*Phase 3 Validated – Nodo A16 · San Miguel, El Salvador*
